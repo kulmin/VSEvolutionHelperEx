@@ -1,0 +1,7 @@
+* text=auto
+*.cs text eol=lf
+*.csproj text eol=lf
+*.dll binary
+*.md text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf

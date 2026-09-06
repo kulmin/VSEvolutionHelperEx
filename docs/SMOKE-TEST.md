@@ -1,12 +1,12 @@
 # Smoke test checklist (pre-release)
 
-Run before tagging or uploading a release zip. Game: **VS 1.16.x**, BepInEx 6 IL2CPP only. Plugin version under test: current `PluginVersion`.
+Run before tagging or publishing artifacts. Test Windows/Proton with the IL2CPP build and native Linux with the Mono build. Plugin version under test: current `PluginVersion`.
 
 ## Setup
 
-- [ ] MelonLoader proxy disabled (no Melon `version.dll`)
-- [ ] BepInEx present (`winhttp.dll` / doorstop)
-- [ ] Fresh DLL copy with game **closed**, and **md5 matches the build output**
+- [ ] Matching BepInEx package installed for the selected game build
+- [ ] Matching plugin artifact installed with the game closed
+- [ ] Installed DLL SHA-256 matches the build output
 - [ ] `BepInEx/LogOutput.log` shows `VS Evolution Helper {version}` and `Patches applied successfully`
 - [ ] `[GameData] Ready:` appears with weapon/item/arcana counts
 - [ ] No `Patched … (0 args)` / `SetData not found` warnings - that means a game update renamed a method
@@ -27,9 +27,7 @@ Run before tagging or uploading a release zip. Game: **VS 1.16.x**, BepInEx 6 IL
 - [ ] **Arma Dio**: same — this is a **different view** (`View - WeaponSelection`, not `TP_`) and a different bind method, so it must be checked separately
 - [ ] Open a selector twice in one run: tooltips work the second time too
 
-> **Two views, one cell type.** Both selector views live under `Safe Area` at once and only
-> one is active. A tooltip that builds but never draws means the mod latched onto the inactive
-> one — with `VerboseLogging`, `ShowItemPopup: no modal UI active` is the tell.
+- [ ] The inactive selector view does not receive the tooltip
 
 ## Collection / Grimoire
 
@@ -49,12 +47,8 @@ Run before tagging or uploading a release zip. Game: **VS 1.16.x**, BepInEx 6 IL
 - [ ] Long Guide content scrolls
 - [ ] Closing stage select restores music panel
 - [ ] **Controller:** LB/RB (or Q/E) switch tabs; Guide scrolls; relic dwell tooltip works
-- [ ] **On a save where music is NOT unlocked:** Guide is still reachable (known defect - tracked in the private roadmap)
-
-> **Unlock-state coverage.** Most of this list passes trivially on a fully-unlocked save.
-> Anything that reuses a game panel can silently vanish when that panel does not exist yet —
-> the Stage Guide is coupled to the song panel exactly this way. When a feature depends on
-> another UI element, test it on a **partially-unlocked** save too, not just the dev save.
+- [ ] On a save where music is not unlocked, Guide remains reachable
+- [ ] Repeat the stage checks on a partially unlocked save
 
 ## List pages (Secrets, Bestiary, Unlocks, Power Up, Music)
 
@@ -72,8 +66,7 @@ Same shape on all five: hover a row, a docked panel appears in the free space be
 - [ ] Scroll the list, then hover again — recycled rows still respond
 - [ ] **Power Up:** buy a level; the open panel updates in place without moving the mouse
 - [ ] **Power Up:** where a projection cannot be trusted, no projection is shown (never a wrong total)
-- [ ] **Bestiary:** the page **opens** from the main menu with no Il2CppInterop trampoline flood
-      (`EnemyItemUI.SetData` is not Harmony-patched; 1.16 `Nullable<DlcType>` crash)
+- [ ] **Bestiary:** the page opens without repeated patch or marshalling exceptions
 - [ ] **Bestiary:** a DLC enemy shows its icon from the **second** hover (async atlas — expected)
 - [ ] **Bestiary:** a variant row names the row, not the family (e.g. "Calamity", not "Spirit")
 - [ ] **Music:** a locked track is named from the record, not `-----`
@@ -114,7 +107,7 @@ Same shape on all five: hover a row, a docked panel appears in the free space be
 
 ## Release package
 
-- [ ] Zip layout: `BepInEx/plugins/VSEvolutionHelper/VSEvolutionHelper.dll`
-- [ ] Zip includes README.md + CHANGELOG.md
+- [ ] Windows IL2CPP and native Linux Mono artifacts both exist
+- [ ] Each artifact uses `BepInEx/plugins/VSEvolutionHelper/VSEvolutionHelper.dll`
 - [ ] Version in log matches `PluginVersion`, CHANGELOG header, and git tag
-- [ ] GitHub release notes list highlights since last public tag
+- [ ] Both projects build without warnings

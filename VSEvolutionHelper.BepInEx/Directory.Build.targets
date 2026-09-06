@@ -1,0 +1,42 @@
+<Project>
+  <ItemGroup>
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExPath)/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.Common" HintPath="$(BepInExPath)/core/BepInEx.Unity.Common.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExPath)/core/0Harmony.dll" Private="false" />
+
+    <Reference Include="VampireSurvivors.Runtime" HintPath="$(GameReferencePath)/VampireSurvivors.Runtime.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(GameReferencePath)/Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="PauseSystem" HintPath="$(GameReferencePath)/PauseSystem.dll" Private="false" />
+    <Reference Include="PhaserPort" HintPath="$(GameReferencePath)/PhaserPort.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameReferencePath)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(GameReferencePath)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameReferencePath)/UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameReferencePath)/UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameReferencePath)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GameReferencePath)/Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameReferencePath)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="l2localization" HintPath="$(GameReferencePath)/l2localization.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeFlavor)' == 'Mono'">
+    <Reference Include="BepInEx.Unity.Mono" HintPath="$(BepInExPath)/core/BepInEx.Unity.Mono.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(GameReferencePath)/UnityEngine.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeFlavor)' == 'IL2CPP'">
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(BepInExPath)/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExPath)/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExPath)/core/Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameReferencePath)/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="Il2CppSystem" HintPath="$(GameReferencePath)/Il2CppSystem.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="ValidateBuildReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameReferencePath)/VampireSurvivors.Runtime.dll')"
+           Text="Game references are missing from $(GameReferencePath)." />
+    <Error Condition="'$(RuntimeFlavor)' == 'Mono' and !Exists('$(BepInExPath)/core/BepInEx.Unity.Mono.dll')"
+           Text="Set BepInExPath to an extracted BepInEx Unity.Mono directory." />
+    <Error Condition="'$(RuntimeFlavor)' == 'IL2CPP' and !Exists('$(BepInExPath)/core/BepInEx.Unity.IL2CPP.dll')"
+           Text="Set BepInExPath to an extracted BepInEx Unity.IL2CPP directory." />
+  </Target>
+</Project>

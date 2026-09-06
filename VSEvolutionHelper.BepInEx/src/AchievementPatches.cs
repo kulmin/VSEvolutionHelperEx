@@ -15,121 +15,121 @@ namespace VSItemTooltips;
 /// </summary>
 public static class AchievementPatches
 {
-	private static readonly RowTooltipRegistry Rows = new RowTooltipRegistry("Achievements");
+    private static readonly RowTooltipRegistry Rows = new RowTooltipRegistry("Achievements");
 
-	// Same panel slot Collections uses, so the two pages read the same way.
+    // Same panel slot Collections uses, so the two pages read the same way.
 
-	public static void Apply(Harmony harmony)
-	{
-		if (!Plugin.AchievementTooltipsEnabled)
-		{
-			Plugin.Log.LogInfo("[Achievements] Disabled by config");
-			return;
-		}
-		try
-		{
-			// SetData bound but never fired: the page binds its rows through Init. Both are
-			// patched rather than swapping one for the other, since either may be the entry
-			// point depending on how a row is created.
-			int patched = 0;
-			foreach (var m in typeof(AchievementDataUI).GetMethods(
-				System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
-			{
-				if (m.Name != "SetData" && m.Name != "Init") continue;
-				harmony.Patch(m, postfix: new HarmonyMethod(typeof(AchievementPatches), nameof(SetData_Postfix)));
-				Plugin.Log.LogInfo($"[Achievements] Patched AchievementDataUI.{m.Name}({m.GetParameters().Length} args)");
-				patched++;
-			}
-			if (patched == 0) Plugin.Log.LogWarning("[Achievements] No AchievementDataUI bind method found");
-		}
-		catch (Exception ex)
-		{
-			Plugin.Log.LogWarning("[Achievements] patch: " + ex.Message);
-		}
-	}
+    public static void Apply(Harmony harmony)
+    {
+        if (!Plugin.AchievementTooltipsEnabled)
+        {
+            Plugin.Log.LogInfo("[Achievements] Disabled by config");
+            return;
+        }
+        try
+        {
+            // SetData bound but never fired: the page binds its rows through Init. Both are
+            // patched rather than swapping one for the other, since either may be the entry
+            // point depending on how a row is created.
+            int patched = 0;
+            foreach (var m in typeof(AchievementDataUI).GetMethods(
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            {
+                if (m.Name != "SetData" && m.Name != "Init") continue;
+                harmony.Patch(m, postfix: new HarmonyMethod(typeof(AchievementPatches), nameof(SetData_Postfix)));
+                Plugin.Log.LogInfo($"[Achievements] Patched AchievementDataUI.{m.Name}({m.GetParameters().Length} args)");
+                patched++;
+            }
+            if (patched == 0) Plugin.Log.LogWarning("[Achievements] No AchievementDataUI bind method found");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogWarning("[Achievements] patch: " + ex.Message);
+        }
+    }
 
-	/// <summary>The instance holds the current record after both SetData and Init have completed.</summary>
-	public static void SetData_Postfix(AchievementDataUI __instance)
-	{
-		try
-		{
-			if ((Object)(object)__instance == (Object)null) return;
+    /// <summary>The instance holds the current record after both SetData and Init have completed.</summary>
+    public static void SetData_Postfix(AchievementDataUI __instance)
+    {
+        try
+        {
+            if ((Object)(object)__instance == (Object)null) return;
 
-			// Progress rows bind via Init. That method assigns _data but never the row's normal
-			// AchievementType, leaving it as ReachLV5; using that id made every tooltip read
-			// ReachLV5's Wings reward. The bound record itself has the right reward strings.
-			var achievement = __instance._data;
-			if (achievement == null) return;
-			string id = null;
-			try { id = achievement.Type.ToString(); } catch { }
-			var rows = GameData.GetAchievementRows(achievement, out string description);
-			if ((rows == null || rows.Count == 0) && string.IsNullOrEmpty(description))
-			{
-				if (Plugin.DebugVerbose) Plugin.Dbg("Achievements: nothing to show for current record");
-				return;
-			}
+            // Progress rows bind via Init. That method assigns _data but never the row's normal
+            // AchievementType, leaving it as ReachLV5; using that id made every tooltip read
+            // ReachLV5's Wings reward. The bound record itself has the right reward strings.
+            var achievement = RuntimeAccess.Get<VampireSurvivors.Achievements.AchievementData>(__instance, "_data");
+            if (achievement == null) return;
+            string id = null;
+            try { id = achievement.Type.ToString(); } catch { }
+            var rows = GameData.GetAchievementRows(achievement, out string description);
+            if ((rows == null || rows.Count == 0) && string.IsNullOrEmpty(description))
+            {
+                if (Plugin.DebugVerbose) Plugin.Dbg("Achievements: nothing to show for current record");
+                return;
+            }
 
-			GameObject root = ((Component)__instance).gameObject;
+            GameObject root = ((Component)__instance).gameObject;
 
-			Rows.Register(root, IconObject(__instance), new RowTooltipRegistry.Entry
-			{
-				Title = ResolveTitle(__instance, id),
-				Description = description,
-				Sprite = IconSprite(__instance),
-				Rows = rows,
-				Offset = new Vector2(ItemTooltipsMod.SidePanelX, ItemTooltipsMod.SidePanelTopY),
-				Pivot = ItemTooltipsMod.SidePanelPivot,
-			});
+            Rows.Register(root, IconObject(__instance), new RowTooltipRegistry.Entry
+            {
+                Title = ResolveTitle(__instance, id),
+                Description = description,
+                Sprite = IconSprite(__instance),
+                Rows = rows,
+                Offset = new Vector2(ItemTooltipsMod.SidePanelX, ItemTooltipsMod.SidePanelTopY),
+                Pivot = ItemTooltipsMod.SidePanelPivot,
+            });
 
-			if (Plugin.DebugVerbose)
-				Plugin.Dbg($"Achievements: registered {rows.Count} rows for {id}");
-		}
-		catch (Exception ex)
-		{
-			Plugin.Log.LogWarning("[Achievements] SetData postfix: " + ex.Message);
-		}
-	}
+            if (Plugin.DebugVerbose)
+                Plugin.Dbg($"Achievements: registered {rows.Count} rows for {id}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.LogWarning("[Achievements] SetData postfix: " + ex.Message);
+        }
+    }
 
-	/// <summary>The row's own label, which the game has already localized.</summary>
-	private static string ResolveTitle(AchievementDataUI item, string id)
-	{
-		try
-		{
-			var label = item.Label;
-			if ((Object)(object)label != (Object)null)
-			{
-				string t = ((TMPro.TMP_Text)label).text;
-				if (!string.IsNullOrWhiteSpace(t) && !GameData.LooksLikeLocKey(t)) return t.Trim();
-			}
-		}
-		catch { }
-		return GameData.HumanizeId(id);
-	}
+    /// <summary>The row's own label, which the game has already localized.</summary>
+    private static string ResolveTitle(AchievementDataUI item, string id)
+    {
+        try
+        {
+            var label = RuntimeAccess.Get<TMPro.TextMeshProUGUI>(item, "Label");
+            if ((Object)(object)label != (Object)null)
+            {
+                string t = ((TMPro.TMP_Text)label).text;
+                if (!string.IsNullOrWhiteSpace(t) && !GameData.LooksLikeLocKey(t)) return t.Trim();
+            }
+        }
+        catch { }
+        return GameData.HumanizeId(id);
+    }
 
-	private static GameObject IconObject(AchievementDataUI item)
-	{
-		try
-		{
-			var img = item.Icon;
-			if ((Object)(object)img != (Object)null) return ((Component)img).gameObject;
-		}
-		catch { }
-		return null;
-	}
+    private static GameObject IconObject(AchievementDataUI item)
+    {
+        try
+        {
+            var img = RuntimeAccess.Get<UnityEngine.UI.Image>(item, "Icon");
+            if ((Object)(object)img != (Object)null) return ((Component)img).gameObject;
+        }
+        catch { }
+        return null;
+    }
 
-	private static Sprite IconSprite(AchievementDataUI item)
-	{
-		try
-		{
-			var img = item.Icon;
-			if ((Object)(object)img != (Object)null) return img.sprite;
-		}
-		catch { }
-		return null;
-	}
+    private static Sprite IconSprite(AchievementDataUI item)
+    {
+        try
+        {
+            var img = RuntimeAccess.Get<UnityEngine.UI.Image>(item, "Icon");
+            if ((Object)(object)img != (Object)null) return img.sprite;
+        }
+        catch { }
+        return null;
+    }
 
-	public static void Clear()
-	{
-		Rows.Clear();
-	}
+    public static void Clear()
+    {
+        Rows.Clear();
+    }
 }

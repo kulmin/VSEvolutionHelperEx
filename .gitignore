@@ -1,41 +1,16 @@
-# Build outputs
 **/bin/
 **/obj/
-*.user
-*.suo
-.vs/
-
-# Local tooling / game dumps (large, machine-specific)
 .tools/
-*.dll
-!VSEvolutionHelper.BepInEx/**/*.dll
-
-# Keep plugin project source only; ignore any accidental local DLL copies at root
-VSEvolutionHelper.BepInEx.dll
-VSEvolutionHelper130.dll
-
-# Release staging (zip itself may be kept under dist/)
 dist/
 
-# Local save dumps / private saves (do not commit)
-storage/
-
-# IDE / OS
-.idea/
-*.swp
-Thumbs.db
-Desktop.ini
-
-# Private working material — not shipped in the public repo
-scripts/
-plan/
-
-# Installer publish output (binaries are attached to releases, not committed)
-installer/dist/
-installer/dist-trim/
-
-installer/release/
+*.dll
+!VSEvolutionHelper.BepInEx/lib/**/*.dll
 
 *.env*
-
-AG*.m*
+*.user
+*.suo
+*.swp
+.idea/
+.vs/
+Desktop.ini
+Thumbs.db

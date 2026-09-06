@@ -2,42 +2,69 @@ using System;
 using System.Collections.Generic;
 using BepInEx.Logging;
 using I2.Loc;
+#if !VSEH_MONO
 using Il2CppSystem.Collections.Generic;
+#endif
 using UnityEngine;
 using VampireSurvivors.Achievements;
 using VampireSurvivors.Data;
 using VampireSurvivors.Data.PowerUp;
 using VampireSurvivors.Data.Weapons;
+using VampireSurvivors.Framework;
 using VampireSurvivors.Graphics;
 using VampireSurvivors.UI;
 using Object = UnityEngine.Object;
+#if VSEH_MONO
+using JsonDocument = VSItemTooltips.MonoJsonDocument;
+using JsonElement = VSItemTooltips.MonoJsonElement;
+using JsonValueKind = VSItemTooltips.MonoJsonValueKind;
+#else
+using JsonDocument = System.Text.Json.JsonDocument;
+using JsonElement = System.Text.Json.JsonElement;
+using JsonValueKind = System.Text.Json.JsonValueKind;
+#endif
 
-// Alias Il2Cpp collections so we don't clash with System.Collections.Generic
 using VampireSurvivors.Data.Items;
-using Il2CppDictWeapons = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.WeaponType, Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>>;
-using Il2CppDictPowerUps = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.PowerUpType, Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>>;
-using Il2CppDictArcanas = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.ArcanaType, VampireSurvivors.Data.ArcanaData>;
-using Il2CppDictItems = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.ItemType, VampireSurvivors.Data.Items.ItemData>;
-using Il2CppListWeapons = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>;
-using Il2CppListPowerUps = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>;
-using Il2CppListWeaponType = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.WeaponType>;
-using Il2CppListObject = Il2CppSystem.Collections.Generic.List<Il2CppSystem.Object>;
+#if VSEH_MONO
+using RuntimeWeaponDictionary = System.Collections.Generic.Dictionary<VampireSurvivors.Data.WeaponType, System.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>>;
+using RuntimePowerUpDictionary = System.Collections.Generic.Dictionary<VampireSurvivors.Data.PowerUpType, System.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>>;
+using RuntimeArcanaDictionary = System.Collections.Generic.Dictionary<VampireSurvivors.Data.ArcanaType, VampireSurvivors.Data.ArcanaData>;
+using RuntimeItemDictionary = System.Collections.Generic.Dictionary<VampireSurvivors.Data.ItemType, VampireSurvivors.Data.Items.ItemData>;
+using RuntimeWeaponList = System.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>;
+using RuntimePowerUpList = System.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>;
+using RuntimeWeaponTypeList = System.Collections.Generic.List<VampireSurvivors.Data.WeaponType>;
+using RuntimeObjectList = System.Collections.Generic.List<object>;
+using RuntimeMerchantDictionary = System.Collections.Generic.Dictionary<VampireSurvivors.Data.CharacterType, VampireSurvivors.App.Data.CustomMerchantData>;
+using RuntimeNullableDlc = System.Nullable<VampireSurvivors.Data.DlcType>;
+using RuntimeObject = System.Object;
+#else
+using RuntimeWeaponDictionary = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.WeaponType, Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>>;
+using RuntimePowerUpDictionary = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.PowerUpType, Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>>;
+using RuntimeArcanaDictionary = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.ArcanaType, VampireSurvivors.Data.ArcanaData>;
+using RuntimeItemDictionary = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.ItemType, VampireSurvivors.Data.Items.ItemData>;
+using RuntimeWeaponList = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.Weapons.WeaponData>;
+using RuntimePowerUpList = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.PowerUp.PowerUpData>;
+using RuntimeWeaponTypeList = Il2CppSystem.Collections.Generic.List<VampireSurvivors.Data.WeaponType>;
+using RuntimeObjectList = Il2CppSystem.Collections.Generic.List<Il2CppSystem.Object>;
+using RuntimeMerchantDictionary = Il2CppSystem.Collections.Generic.Dictionary<VampireSurvivors.Data.CharacterType, VampireSurvivors.App.Data.CustomMerchantData>;
+using RuntimeNullableDlc = Il2CppSystem.Nullable<VampireSurvivors.Data.DlcType>;
+using RuntimeObject = Il2CppSystem.Object;
+#endif
 
 namespace VSItemTooltips;
 
 /// <summary>
-/// Typed access to Vampire Survivors 1.15 data (from BepInEx Il2Cpp interop decompilation).
-/// Replaces reflection-heavy MelonLoader-era dictionary walks that break under Il2Cpp lists.
+/// Typed access to Vampire Survivors data shared by the IL2CPP and Mono builds.
 /// </summary>
 public static class GameData
 {
     private static ManualLogSource Log => Plugin.Log;
 
     private static DataManager _dataManager;
-    private static Il2CppDictWeapons _weapons;
-    private static Il2CppDictPowerUps _powerUps;
-    private static Il2CppDictArcanas _arcanas;
-    private static Il2CppDictItems _items;
+    private static RuntimeWeaponDictionary _weapons;
+    private static RuntimePowerUpDictionary _powerUps;
+    private static RuntimeArcanaDictionary _arcanas;
+    private static RuntimeItemDictionary _items;
     private static bool _built;
     private static bool _loggedBuild;
     private static bool _arcanaBuilt;
@@ -75,10 +102,10 @@ public static class GameData
 
     public static bool IsReady => _built && _weapons != null;
     public static DataManager DataManager => _dataManager;
-    public static Il2CppDictWeapons WeaponsDict => _weapons;
-    public static Il2CppDictPowerUps PowerUpsDict => _powerUps;
-    public static Il2CppDictArcanas ArcanasDict => _arcanas;
-    public static Il2CppDictItems ItemsDict => _items;
+    public static RuntimeWeaponDictionary WeaponsDict => _weapons;
+    public static RuntimePowerUpDictionary PowerUpsDict => _powerUps;
+    public static RuntimeArcanaDictionary ArcanasDict => _arcanas;
+    public static RuntimeItemDictionary ItemsDict => _items;
 
     public static void Reset()
     {
@@ -121,17 +148,21 @@ public static class GameData
         {
             try
             {
-                var pages = Object.FindObjectsOfType<BaseUIPage>();
+                var pages = UnityObjectQuery.FindAll<BaseUIPage>();
                 if (pages != null)
                 {
                     int n = pages.Length;
                     for (int i = 0; i < n; i++)
                     {
                         var page = pages[i];
-                        if (page != null && page.Data != null)
+                        if (page != null)
                         {
-                            _dataManager = page.Data;
-                            break;
+                            DataManager data = RuntimeAccess.Get<DataManager>(page, "Data");
+                            if (data != null)
+                            {
+                                _dataManager = data;
+                                break;
+                            }
                         }
                     }
                 }
@@ -147,7 +178,7 @@ public static class GameData
             try
             {
                 // Scan MonoBehaviours for a "Data" property of type DataManager
-                var behaviours = Object.FindObjectsOfType<MonoBehaviour>();
+                var behaviours = UnityObjectQuery.FindAll<MonoBehaviour>();
                 if (behaviours != null)
                 {
                     int n = Math.Min(behaviours.Length, 200);
@@ -221,7 +252,7 @@ public static class GameData
             if (_built && !_loggedBuild)
             {
                 _loggedBuild = true;
-                Log.LogInfo($"[GameData] Ready: {WeaponNames.Count} weapon names, {SpriteToWeapon.Count} weapon sprites, {PowerUpNames.Count} powerups, {ItemNames.Count} items, {ArcanaNames.Count} arcanas (typed Il2Cpp API)");
+                Log.LogInfo($"[GameData] Ready: {WeaponNames.Count} weapon names, {SpriteToWeapon.Count} weapon sprites, {PowerUpNames.Count} powerups, {ItemNames.Count} items, {ArcanaNames.Count} arcanas (typed game API)");
             }
             return _built;
         }
@@ -255,7 +286,7 @@ public static class GameData
             foreach (var kvp in _weapons)
             {
                 WeaponType type = kvp.Key;
-                Il2CppListWeapons list = kvp.Value;
+                RuntimeWeaponList list = kvp.Value;
                 if (list == null || list.Count == 0)
                 {
                     continue;
@@ -320,7 +351,7 @@ public static class GameData
         }
     }
 
-    private static void MergeWeaponDict(Il2CppDictWeapons target, Il2CppDictWeapons source)
+    private static void MergeWeaponDict(RuntimeWeaponDictionary target, RuntimeWeaponDictionary source)
     {
         if (target == null || source == null)
         {
@@ -335,7 +366,7 @@ public static class GameData
         }
     }
 
-    private static void MergePowerUpDict(Il2CppDictPowerUps target, Il2CppDictPowerUps source)
+    private static void MergePowerUpDict(RuntimePowerUpDictionary target, RuntimePowerUpDictionary source)
     {
         if (target == null || source == null)
         {
@@ -365,7 +396,7 @@ public static class GameData
         return list[0];
     }
 
-    public static Il2CppListWeapons GetWeaponDataList(WeaponType type)
+    public static RuntimeWeaponList GetWeaponDataList(WeaponType type)
     {
         EnsureLoaded();
         if (_weapons == null || !_weapons.ContainsKey(type))
@@ -484,7 +515,7 @@ public static class GameData
     /// </summary>
     private const double PowerUpSurchargeGrowth = 1.1;
 
-    private static void AddRankRow(System.Collections.Generic.List<IconRow> rows, Il2CppListPowerUps list)
+    private static void AddRankRow(System.Collections.Generic.List<IconRow> rows, RuntimePowerUpList list)
     {
         try
         {
@@ -994,7 +1025,7 @@ public static class GameData
         _secretRewardsParsed = true;
         try
         {
-            var json = _dataManager._allSecretsJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allSecretsJson");
             if (json == null)
             {
                 Plugin.Dbg("[GameData] _allSecretsJson is null");
@@ -1010,9 +1041,9 @@ public static class GameData
 
             var map = new System.Collections.Generic.Dictionary<string, SecretRewardJson>(
                 StringComparer.OrdinalIgnoreCase);
-            using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+            using (var doc = JsonDocument.Parse(raw))
             {
-                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
                 {
                     Plugin.Dbg("[GameData] secrets JSON root is " + doc.RootElement.ValueKind);
                     return;
@@ -1032,15 +1063,15 @@ public static class GameData
         }
     }
 
-    private static SecretRewardJson ReadSecretEntry(System.Text.Json.JsonElement el)
+    private static SecretRewardJson ReadSecretEntry(JsonElement el)
     {
         // Some VS catalogs wrap each record in a single-element array (the per-level shape).
-        if (el.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (el.ValueKind == JsonValueKind.Array)
         {
             foreach (var first in el.EnumerateArray()) return ReadSecretEntry(first);
             return null;
         }
-        if (el.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+        if (el.ValueKind != JsonValueKind.Object) return null;
 
         return new SecretRewardJson
         {
@@ -1061,8 +1092,8 @@ public static class GameData
         };
     }
 
-    private static bool TryJsonProp(System.Text.Json.JsonElement obj, string name,
-        out System.Text.Json.JsonElement val)
+    private static bool TryJsonProp(JsonElement obj, string name,
+        out JsonElement val)
     {
         if (obj.TryGetProperty(name, out val)) return true;
         foreach (var p in obj.EnumerateObject())
@@ -1077,19 +1108,19 @@ public static class GameData
         return false;
     }
 
-    private static string JsonStr(System.Text.Json.JsonElement obj, string name)
+    private static string JsonStr(JsonElement obj, string name)
     {
         if (!TryJsonProp(obj, name, out var v)) return null;
-        if (v.ValueKind != System.Text.Json.JsonValueKind.String) return null;
+        if (v.ValueKind != JsonValueKind.String) return null;
         string s = v.GetString();
         return IsVoidValue(s) ? null : s;
     }
 
-    private static int JsonInt(System.Text.Json.JsonElement obj, string name)
+    private static int JsonInt(JsonElement obj, string name)
     {
         if (!TryJsonProp(obj, name, out var v)) return 0;
-        if (v.ValueKind == System.Text.Json.JsonValueKind.Number && v.TryGetInt32(out int i)) return i;
-        if (v.ValueKind == System.Text.Json.JsonValueKind.String
+        if (v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int i)) return i;
+        if (v.ValueKind == JsonValueKind.String
             && int.TryParse(v.GetString(), out int j)) return j;
         return 0;
     }
@@ -1099,19 +1130,19 @@ public static class GameData
     /// contributes its most identifying string field instead of being skipped.
     /// </summary>
     private static System.Collections.Generic.List<string> JsonStrList(
-        System.Text.Json.JsonElement obj, string name)
+        JsonElement obj, string name)
     {
         if (!TryJsonProp(obj, name, out var v)) return null;
-        if (v.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+        if (v.ValueKind != JsonValueKind.Array) return null;
         var list = new System.Collections.Generic.List<string>();
         foreach (var el in v.EnumerateArray())
         {
-            if (el.ValueKind == System.Text.Json.JsonValueKind.String)
+            if (el.ValueKind == JsonValueKind.String)
             {
                 string s = el.GetString();
                 if (!IsVoidValue(s)) list.Add(s);
             }
-            else if (el.ValueKind == System.Text.Json.JsonValueKind.Object)
+            else if (el.ValueKind == JsonValueKind.Object)
             {
                 string s = JsonStr(el, "charType") ?? JsonStr(el, "characterType")
                     ?? JsonStr(el, "skin") ?? JsonStr(el, "skinName") ?? JsonStr(el, "name");
@@ -1119,7 +1150,7 @@ public static class GameData
                 {
                     foreach (var p in el.EnumerateObject())
                     {
-                        if (p.Value.ValueKind != System.Text.Json.JsonValueKind.String) continue;
+                        if (p.Value.ValueKind != JsonValueKind.String) continue;
                         string cand = p.Value.GetString();
                         if (!IsVoidValue(cand)) { s = cand; break; }
                     }
@@ -1358,7 +1389,7 @@ public static class GameData
         if (_dumpedEnemyJson || _dataManager == null || !Plugin.DebugVerbose || string.IsNullOrEmpty(enemyId)) return;
         try
         {
-            var json = _dataManager._allEnemiesJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allEnemiesJson");
             if (json == null) { _dumpedEnemyJson = true; return; }
             string raw = json.ToString();
             if (string.IsNullOrEmpty(raw)) { _dumpedEnemyJson = true; return; }
@@ -1457,25 +1488,25 @@ public static class GameData
         var map = new System.Collections.Generic.Dictionary<string, EnemyRec>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            var json = _dataManager._allEnemiesJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allEnemiesJson");
             if (json == null) { Plugin.Dbg("[GameData] _allEnemiesJson is null"); return; }
             string raw = null;
             try { raw = json.ToString(); } catch { }
             if (string.IsNullOrEmpty(raw)) return;
 
-            using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+            using (var doc = JsonDocument.Parse(raw))
             {
-                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return;
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    System.Text.Json.JsonElement rec = prop.Value;
-                    if (rec.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    JsonElement rec = prop.Value;
+                    if (rec.ValueKind == JsonValueKind.Array)
                     {
                         bool any = false;
                         foreach (var f in rec.EnumerateArray()) { rec = f; any = true; break; }
                         if (!any) continue;
                     }
-                    if (rec.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                    if (rec.ValueKind != JsonValueKind.Object) continue;
                     map[prop.Name] = ReadEnemyRec(rec);
                 }
             }
@@ -1495,7 +1526,7 @@ public static class GameData
         Plugin.Dbg($"[GameData] enemy records: {map.Count}, {withVariants} with variants, {withPlaces} with places");
     }
 
-    private static EnemyRec ReadEnemyRec(System.Text.Json.JsonElement rec)
+    private static EnemyRec ReadEnemyRec(JsonElement rec)
     {
         var r = new EnemyRec();
         r.HasHp = TryJsonFloat(rec, "maxHp", out r.Hp);
@@ -1521,7 +1552,7 @@ public static class GameData
         resist("Defang resist", "res_Defang");
         resist("Fire weakness", "weak_Fire");
         if (TryJsonProp(rec, "passThroughWalls", out var ptw)
-            && ptw.ValueKind == System.Text.Json.JsonValueKind.True)
+            && ptw.ValueKind == JsonValueKind.True)
             trait("Passes through walls");
         if (TryJsonFloat(rec, "shieldDuration", out float sd) && sd > 0f) trait("Shield: " + Num(sd) + "s");
         if (TryJsonFloat(rec, "lives", out float lv) && lv > 1f) trait("Lives: " + Num(lv));
@@ -1690,8 +1721,8 @@ public static class GameData
             {
                 // Adventure stages are deliberately kept in their own catalog. Parsing only
                 // _allStagesJson made every ADV_* reward fall through to its internal enum id.
-                AddStageNames("normal", _dataManager._allStagesJson, map);
-                AddStageNames("adventure", _dataManager._allAdventureStagesJson, map);
+                AddStageNames("normal", RuntimeAccess.Get<object>(_dataManager, "_allStagesJson"), map);
+                AddStageNames("adventure", RuntimeAccess.Get<object>(_dataManager, "_allAdventureStagesJson"), map);
             }
             catch (Exception ex) { Plugin.Dbg("[GameData] stage names: " + ex.Message); }
             _stageNames = map;
@@ -1726,9 +1757,7 @@ public static class GameData
         string raw = null;
         try
         {
-            // Calling ToString through System.Object invokes the interop wrapper's type-name
-            // implementation ("Newtonsoft.Json.Linq.JObject"), not Newtonsoft's JSON writer.
-            // The log's 28-character "N..." parse failures proved this boundary matters.
+            // Serialize through JToken so both runtime wrappers return JSON content.
             var token = json as Newtonsoft.Json.Linq.JToken;
             if (token == null)
             {
@@ -1749,23 +1778,23 @@ public static class GameData
         int before = map.Count;
         try
         {
-            using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+            using (var doc = JsonDocument.Parse(raw))
             {
-                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
                 {
                     Plugin.Dbg($"[Stages] {catalog} catalog root is {doc.RootElement.ValueKind}");
                     return;
                 }
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    System.Text.Json.JsonElement rec = prop.Value;
-                    if (rec.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    JsonElement rec = prop.Value;
+                    if (rec.ValueKind == JsonValueKind.Array)
                     {
                         bool any = false;
                         foreach (var f in rec.EnumerateArray()) { rec = f; any = true; break; }
                         if (!any) continue;
                     }
-                    if (rec.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                    if (rec.ValueKind != JsonValueKind.Object) continue;
                     string n = JsonStr(rec, "stageName");
                     if (string.IsNullOrWhiteSpace(n)) continue;
                     string loc = LocalizeDisplayText(n) ?? n;
@@ -1777,16 +1806,16 @@ public static class GameData
         Plugin.Dbg($"[Stages] {catalog} catalog: {raw.Length} chars, added {map.Count - before} names");
     }
 
-    private static bool TryJsonFloat(System.Text.Json.JsonElement obj, string name, out float value)
+    private static bool TryJsonFloat(JsonElement obj, string name, out float value)
     {
         value = 0f;
         if (!TryJsonProp(obj, name, out var v)) return false;
-        if (v.ValueKind == System.Text.Json.JsonValueKind.Number && v.TryGetDouble(out double d))
+        if (v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out double d))
         {
             value = (float)d;
             return true;
         }
-        if (v.ValueKind == System.Text.Json.JsonValueKind.String
+        if (v.ValueKind == JsonValueKind.String
             && float.TryParse(v.GetString(), System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float f))
         {
@@ -1891,25 +1920,25 @@ public static class GameData
         var map = new System.Collections.Generic.Dictionary<string, AchievementRec>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            var json = _dataManager._allAchievementsJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allAchievementsJson");
             if (json == null) { Plugin.Dbg("[GameData] _allAchievementsJson is null"); return; }
             string raw = null;
             try { raw = json.ToString(); } catch { }
             if (string.IsNullOrEmpty(raw)) return;
 
-            using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+            using (var doc = JsonDocument.Parse(raw))
             {
-                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return;
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    System.Text.Json.JsonElement rec = prop.Value;
-                    if (rec.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    JsonElement rec = prop.Value;
+                    if (rec.ValueKind == JsonValueKind.Array)
                     {
                         bool any = false;
                         foreach (var f in rec.EnumerateArray()) { rec = f; any = true; break; }
                         if (!any) continue;
                     }
-                    if (rec.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                    if (rec.ValueKind != JsonValueKind.Object) continue;
                     map[prop.Name] = ReadAchievementRec(rec);
                 }
             }
@@ -1936,7 +1965,7 @@ public static class GameData
             || (r.Skins != null && r.Skins.Count > 0);
     }
 
-    private static AchievementRec ReadAchievementRec(System.Text.Json.JsonElement rec)
+    private static AchievementRec ReadAchievementRec(JsonElement rec)
     {
         var r = new AchievementRec
         {
@@ -1978,8 +2007,7 @@ public static class GameData
     private static bool _dumpedAchievementJson;
 
     /// <summary>
-    /// One-time dump of an achievement's raw JSON, to confirm the field names rather than
-    /// assume they match the typed record's. Assuming that on the Bestiary cost several builds.
+    /// Write one achievement record when verbose diagnostics are enabled.
     /// </summary>
     public static void DumpAchievementJsonOnce(string key)
     {
@@ -1987,7 +2015,7 @@ public static class GameData
             || string.IsNullOrEmpty(key)) return;
         try
         {
-            var json = _dataManager._allAchievementsJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allAchievementsJson");
             if (json == null) { _dumpedAchievementJson = true; return; }
             string raw = json.ToString();
             if (string.IsNullOrEmpty(raw)) { _dumpedAchievementJson = true; return; }
@@ -2045,8 +2073,6 @@ public static class GameData
     {
         description = null;
         var rows = new System.Collections.Generic.List<IconRow>();
-        // AchievementData is an Il2CppSystem.Object, not a UnityEngine.Object. Casting it to
-        // UnityEngine.Object returns null even for a live record and silently hides every row.
         if (achievement == null) return rows;
 
         var rewards = new RewardIds();
@@ -2108,7 +2134,7 @@ public static class GameData
         _charInfoParsed = true;
         try
         {
-            var json = _dataManager._allCharactersJson;
+            var json = RuntimeAccess.Get<object>(_dataManager, "_allCharactersJson");
             if (json == null) return;
             string raw = null;
             try { raw = json.ToString(); } catch { }
@@ -2116,20 +2142,20 @@ public static class GameData
 
             var map = new System.Collections.Generic.Dictionary<string, CharInfo>(
                 StringComparer.OrdinalIgnoreCase);
-            using (var doc = System.Text.Json.JsonDocument.Parse(raw))
+            using (var doc = JsonDocument.Parse(raw))
             {
-                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object) return;
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return;
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
                     // Characters are stored as an array of records (base outfit first).
-                    System.Text.Json.JsonElement rec = prop.Value;
-                    if (rec.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    JsonElement rec = prop.Value;
+                    if (rec.ValueKind == JsonValueKind.Array)
                     {
                         bool any = false;
                         foreach (var first in rec.EnumerateArray()) { rec = first; any = true; break; }
                         if (!any) continue;
                     }
-                    if (rec.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+                    if (rec.ValueKind != JsonValueKind.Object) continue;
 
                     map[prop.Name] = new CharInfo
                     {
@@ -2238,7 +2264,7 @@ public static class GameData
             {
                 ItemType it = data.relicToUnlock.Value;
                 if (!IsVoidValue(it.ToString()))
-                rows.Add(new IconRow(GetItemSprite(it), GetItemName(it)));
+                    rows.Add(new IconRow(GetItemSprite(it), GetItemName(it)));
             }
         }
         catch { }
@@ -2248,7 +2274,7 @@ public static class GameData
             {
                 ArcanaType at = data.arcanaToUnlock.Value;
                 if (!IsVoidValue(at.ToString()))
-                rows.Add(new IconRow(GetArcanaSprite(at), GetArcanaName(at)));
+                    rows.Add(new IconRow(GetArcanaSprite(at), GetArcanaName(at)));
             }
         }
         catch { }
@@ -2258,7 +2284,7 @@ public static class GameData
             {
                 PowerUpType pt = data.powerUpToUnlock.Value;
                 if (!IsVoidValue(pt.ToString()))
-                rows.Add(new IconRow(GetSprite(pt), GetPowerUpName(pt)));
+                    rows.Add(new IconRow(GetSprite(pt), GetPowerUpName(pt)));
             }
         }
         catch { }
@@ -2419,7 +2445,7 @@ public static class GameData
     }
 
     private static void DumpMerchantKeys(string label,
-        Il2CppSystem.Collections.Generic.Dictionary<CharacterType, VampireSurvivors.App.Data.CustomMerchantData> dict)
+        RuntimeMerchantDictionary dict)
     {
         try
         {
@@ -2445,7 +2471,7 @@ public static class GameData
     }
 
     private static MerchantWares LookupMerchantWares(
-        Il2CppSystem.Collections.Generic.Dictionary<CharacterType, VampireSurvivors.App.Data.CustomMerchantData> dict, string want)
+        RuntimeMerchantDictionary dict, string want)
     {
         if (dict == null) return null;
         try
@@ -2482,7 +2508,7 @@ public static class GameData
     {
         try
         {
-            var pickups = UnityEngine.Object.FindObjectsOfType<VampireSurvivors.Objects.Items.PickupCustomMerchant>();
+            var pickups = UnityObjectQuery.FindAll<VampireSurvivors.Objects.Items.PickupCustomMerchant>();
             if (pickups == null || pickups.Length == 0)
             {
                 Plugin.Dbg("[GameData] No PickupCustomMerchant in scene");
@@ -2915,7 +2941,7 @@ public static class GameData
             {
                 s = SpriteManager.GetSpriteFast(frameName, textureName);
                 if (s != null) return s;
-                s = SpriteManager.GetSprite(frameName, textureName, ignoreExtension: true);
+                s = SpriteManager.GetSprite(new SpriteTextureData(frameName, textureName));
                 if (s != null) return s;
             }
             // frame-only lookups
@@ -2941,7 +2967,7 @@ public static class GameData
             {
                 s = SpriteManager.GetSpriteFast(frameName, atlas);
                 if (s != null) return s;
-                s = SpriteManager.GetSprite(frameName, atlas, true);
+                s = SpriteManager.GetSprite(new SpriteTextureData(frameName, atlas));
                 if (s != null) return s;
             }
 
@@ -3000,14 +3026,18 @@ public static class GameData
             string tex = r.Texture;
             // A real delegate rather than null: an unguarded callback inside the loader would
             // fault in IL2CPP, where a catch here cannot help.
-            var done = Il2CppInterop.Runtime.DelegateSupport.ConvertDelegate<Il2CppSystem.Action<bool>>(
-                (Action<bool>)(ok =>
+            Action<bool> callback = ok =>
                 {
                     // The index predates the atlas, so it has to be rebuilt before the next look.
                     _spriteIndexBuiltAt = -999f;
                     BumpSpriteGeneration();
                     Plugin.Dbg($"[GameData] atlas '{tex}' load complete: {ok}");
-                }));
+                };
+#if VSEH_MONO
+            var done = callback;
+#else
+            var done = Il2CppInterop.Runtime.DelegateSupport.ConvertDelegate<Il2CppSystem.Action<bool>>(callback);
+#endif
             VampireSurvivors.Framework.Loading.SpriteLoader.LoadTextureAsync(
                 tex, SpriteCacheGroup, dlc, done);
             Plugin.Dbg($"[GameData] requested atlas '{tex}' for {enemyId}"
@@ -3029,9 +3059,9 @@ public static class GameData
     /// Which DLC an enemy belongs to, by the prefix on its id. The loader needs this to find
     /// the atlas at all; base game enemies pass no value.
     /// </summary>
-    private static Il2CppSystem.Nullable<DlcType> DlcFor(string enemyId)
+    private static RuntimeNullableDlc DlcFor(string enemyId)
     {
-        var none = new Il2CppSystem.Nullable<DlcType>();
+        var none = new RuntimeNullableDlc();
         if (string.IsNullOrEmpty(enemyId)) return none;
         string id = enemyId.ToUpperInvariant();
 
@@ -3045,7 +3075,7 @@ public static class GameData
         else if (id.StartsWith("LEM_") || id.Contains("_LEM_")) t = DlcType.Lemon;
         else if (id.StartsWith("BMN_") || id.Contains("_BMN_")) t = DlcType.Bloodmoon;
 
-        return t.HasValue ? new Il2CppSystem.Nullable<DlcType>(t.Value) : none;
+        return t.HasValue ? new RuntimeNullableDlc(t.Value) : none;
     }
 
     /// <summary>
@@ -3093,7 +3123,7 @@ public static class GameData
             if (all == null) return;
             var map = new System.Collections.Generic.Dictionary<string, Sprite>(
                 StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < all.Count; i++)
+            for (int i = 0; i < all.Length; i++)
             {
                 var s = all[i];
                 if ((Object)(object)s == (Object)null) continue;
@@ -3102,7 +3132,7 @@ public static class GameData
                 map[n] = s;
             }
             _spriteIndex = map;
-            Plugin.Dbg($"[GameData] sprite index: {map.Count} names from {all.Count} sprites");
+            Plugin.Dbg($"[GameData] sprite index: {map.Count} names from {all.Length} sprites");
         }
         catch (Exception ex)
         {
@@ -3364,7 +3394,7 @@ public static class GameData
         foreach (var kvp in _weapons)
         {
             WeaponType evolvedType = kvp.Key;
-            Il2CppListWeapons list = kvp.Value;
+            RuntimeWeaponList list = kvp.Value;
             if (list == null)
             {
                 continue;
@@ -3378,7 +3408,7 @@ public static class GameData
                 }
 
                 bool involves = false;
-                Il2CppListWeaponType from = data.evolvesFrom;
+                RuntimeWeaponTypeList from = data.evolvesFrom;
                 if (from != null)
                 {
                     for (int j = 0; j < from.Count; j++)
@@ -3390,7 +3420,7 @@ public static class GameData
                         }
                     }
                 }
-                Il2CppListWeaponType req = data.requires;
+                RuntimeWeaponTypeList req = data.requires;
                 if (!involves && req != null)
                 {
                     for (int j = 0; j < req.Count; j++)
@@ -3402,7 +3432,7 @@ public static class GameData
                         }
                     }
                 }
-                Il2CppListWeaponType reqMax = data.requiresMax;
+                RuntimeWeaponTypeList reqMax = data.requiresMax;
                 if (!involves && reqMax != null)
                 {
                     for (int j = 0; j < reqMax.Count; j++)
@@ -3765,12 +3795,12 @@ public static class GameData
             // weapons list -> reverse index
             try
             {
-                Il2CppListObject weapons = data.weapons;
+                RuntimeObjectList weapons = data.weapons;
                 if (weapons != null)
                 {
                     for (int i = 0; i < weapons.Count; i++)
                     {
-                        Il2CppSystem.Object obj = weapons[i];
+                        RuntimeObject obj = weapons[i];
                         if (TryParseObjectAsWeapon(obj, out WeaponType wt))
                         {
                             if (!WeaponToArcanas.TryGetValue(wt, out var list))
@@ -3795,12 +3825,12 @@ public static class GameData
             // items list -> reverse index (ItemType)
             try
             {
-                Il2CppListObject items = data.items;
+                RuntimeObjectList items = data.items;
                 if (items != null)
                 {
                     for (int i = 0; i < items.Count; i++)
                     {
-                        Il2CppSystem.Object obj = items[i];
+                        RuntimeObject obj = items[i];
                         if (TryParseObjectAsItem(obj, out ItemType it))
                         {
                             if (!ItemToArcanas.TryGetValue(it, out var list))
@@ -4064,13 +4094,7 @@ public static class GameData
             {
             }
         }
-        // T21_BLOODY -> Bloody, D01_SAPPHIRE_MIST -> Sapphire Mist, B004_GENNARO -> Gennaro,
-        // A011_CRACKEDMIRROR -> Crackedmirror.
-        //
-        // The strip used to name T and D explicitly, which was right when they were the only two
-        // groups. 1.16 has five - T, D, B (character arcanas), A (adventure arcanas) and SUB -
-        // and the unnamed ones fell through to the raw id, so a card with no localized name read
-        // "B004 GENNARO". Any letter-then-digits prefix is an id, whatever the group is called.
+        // Arcana groups use a letter prefix followed by digits, such as T21 or A011.
         return HumanizeEnum(StripArcanaGroupPrefix(type.ToString()));
     }
 
@@ -4220,7 +4244,7 @@ public static class GameData
         var seen = new System.Collections.Generic.HashSet<WeaponType>();
         try
         {
-            Il2CppListObject weapons = data.weapons;
+            RuntimeObjectList weapons = data.weapons;
             for (int i = 0; i < weapons.Count; i++)
             {
                 if (TryParseObjectAsWeapon(weapons[i], out WeaponType wt) && seen.Add(wt))
@@ -4231,7 +4255,7 @@ public static class GameData
             // also items that parse as weapons (passives)
             if (data.items != null)
             {
-                Il2CppListObject items = data.items;
+                RuntimeObjectList items = data.items;
                 for (int i = 0; i < items.Count; i++)
                 {
                     if (TryParseObjectAsWeapon(items[i], out WeaponType wt) && seen.Add(wt))
@@ -4260,7 +4284,7 @@ public static class GameData
         var seen = new System.Collections.Generic.HashSet<ItemType>();
         try
         {
-            Il2CppListObject items = data.items;
+            RuntimeObjectList items = data.items;
             for (int i = 0; i < items.Count; i++)
             {
                 if (TryParseObjectAsItem(items[i], out ItemType it) && seen.Add(it))
@@ -4436,8 +4460,7 @@ public static class GameData
         };
     }
 
-    /// <summary>Parse Il2Cpp Object from ArcanaData.weapons list (string / enum box / int).</summary>
-    public static bool TryParseObjectAsWeapon(Il2CppSystem.Object obj, out WeaponType type)
+    public static bool TryParseObjectAsWeapon(RuntimeObject obj, out WeaponType type)
     {
         type = default;
         if (obj == null)
@@ -4473,7 +4496,7 @@ public static class GameData
         return false;
     }
 
-    public static bool TryParseObjectAsItem(Il2CppSystem.Object obj, out ItemType type)
+    public static bool TryParseObjectAsItem(RuntimeObject obj, out ItemType type)
     {
         type = default;
         if (obj == null)

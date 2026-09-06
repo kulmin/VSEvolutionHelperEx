@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildThisFileDirectory)lib/**/*.dll</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'VSEvolutionHelper.BepInEx.Mono'">
+    <BaseIntermediateOutputPath>obj\mono\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>obj\mono\</MSBuildProjectExtensionsPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'VSEvolutionHelper.BepInEx'">
+    <BaseIntermediateOutputPath>obj\il2cpp\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>obj\il2cpp\</MSBuildProjectExtensionsPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

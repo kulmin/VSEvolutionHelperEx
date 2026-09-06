@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>VSEvolutionHelper</AssemblyName>
+    <RootNamespace>VSItemTooltips</RootNamespace>
+    <RuntimeFlavor>Mono</RuntimeFlavor>
+    <DefineConstants>$(DefineConstants);VSEH_MONO</DefineConstants>
+    <OutputPath>bin/$(Configuration)/mono/</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <BepInExPath Condition="'$(BepInExPath)' == ''">$(VSEVOLUTIONHELPER_BEPINEX_PATH)</BepInExPath>
+    <GameReferencePath>$(MSBuildThisFileDirectory)lib/mono</GameReferencePath>
+  </PropertyGroup>
+</Project>

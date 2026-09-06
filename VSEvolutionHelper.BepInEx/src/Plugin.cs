@@ -1,22 +1,37 @@
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+#if VSEH_MONO
+using BepInEx.Unity.Mono;
+#else
 using BepInEx.Unity.IL2CPP;
 using Il2CppInterop.Runtime.Injection;
+#endif
 using UnityEngine;
 
 namespace VSItemTooltips;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-public class Plugin : BasePlugin
+public class Plugin :
+#if VSEH_MONO
+    BaseUnityPlugin
+#else
+    BasePlugin
+#endif
 {
     public const string PluginGuid = "com.nihil.vsevolutionhelper";
     public const string PluginName = "VS Evolution Helper";
-    public const string PluginVersion = "1.14.5";
+    public const string PluginVersion = "1.15.0";
 
+#if VSEH_MONO
+    internal static ManualLogSource Log;
+#else
     internal static new ManualLogSource Log;
+#endif
     internal static Plugin Instance;
+#if !VSEH_MONO
     private static PluginBehaviour _behaviour;
+#endif
 
     // ── Config (public for other types) ─────────────────────────────────
     internal static bool DebugVerbose;
@@ -61,10 +76,18 @@ public class Plugin : BasePlugin
     private ConfigEntry<bool> _musicTooltipsEnabled;
     private ConfigEntry<bool> _musicSpoilers;
 
+#if VSEH_MONO
+    private void Awake()
+#else
     public override void Load()
+#endif
     {
         Instance = this;
+#if VSEH_MONO
+        Log = Logger;
+#else
         Log = base.Log;
+#endif
 
         _debugVerbose = Config.Bind(
             "Debug",
@@ -192,12 +215,21 @@ public class Plugin : BasePlugin
         Log.LogInfo($"Debug.VerboseLogging={DebugVerbose} Tooltips.HoverDelay={TooltipHoverDelay:0.##}s LevelUpHoverDelay={LevelUpHoverDelay:0.##}s");
         Log.LogInfo($"Features: Map={MapTooltipsEnabled} StageGuide={StageGuideEnabled} LevelUpTooltips={LevelUpTooltipsEnabled} Character={CharacterTooltipsEnabled} Adventure={AdventureTooltipsEnabled} WeaponSelect={WeaponSelectionTooltipsEnabled} Secrets={SecretTooltipsEnabled} Bestiary={BestiaryTooltipsEnabled} Achievements={AchievementTooltipsEnabled} PowerUps={PowerUpTooltipsEnabled} ArcanaCards={ArcanaCardTooltipsEnabled} Music={MusicTooltipsEnabled}");
 
+#if !VSEH_MONO
         ClassInjector.RegisterTypeInIl2Cpp<PluginBehaviour>();
         _behaviour = AddComponent<PluginBehaviour>();
+#endif
 
         ItemTooltipsMod.Initialize();
         Log.LogInfo($"{PluginName} initialized.");
     }
+
+#if VSEH_MONO
+    private void Update()
+    {
+        ItemTooltipsMod.Update();
+    }
+#endif
 
     private void ApplyConfigValues()
     {
@@ -232,6 +264,7 @@ public class Plugin : BasePlugin
     }
 }
 
+#if !VSEH_MONO
 /// <summary>
 /// Unity-side host for Update (Il2Cpp-injected MonoBehaviour).
 /// </summary>
@@ -248,3 +281,4 @@ public class PluginBehaviour : MonoBehaviour
     {
     }
 }
+#endif

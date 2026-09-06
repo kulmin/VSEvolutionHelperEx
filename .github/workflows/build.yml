@@ -1,0 +1,75 @@
+name: Build plugins
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows IL2CPP
+            project: VSEvolutionHelper.BepInEx/VSEvolutionHelper.BepInEx.csproj
+            output: il2cpp
+            artifact: VSEvolutionHelper-Unity.IL2CPP-win-x64
+            bepinex_url: https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip
+            bepinex_sha256: f4cc496bd098a0df4164b81e3737297707f13a47c2478dba2f60eefab784817a
+          - name: Native Linux Mono
+            project: VSEvolutionHelper.BepInEx/VSEvolutionHelper.BepInEx.Mono.csproj
+            output: mono
+            artifact: VSEvolutionHelper-Unity.Mono-linux-x64
+            bepinex_url: https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.Mono-linux-x64-6.0.0-be.788%2B5b766a3.zip
+            bepinex_sha256: 76908843b2945a88aba9fe75f08f23051c33d4a8bedfb3709bf112177cd53bfb
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Download BepInEx
+        shell: bash
+        env:
+          BEPINEX_URL: ${{ matrix.bepinex_url }}
+          BEPINEX_SHA256: ${{ matrix.bepinex_sha256 }}
+        run: |
+          curl --fail --location --silent --show-error "$BEPINEX_URL" --output "$RUNNER_TEMP/bepinex.zip"
+          echo "$BEPINEX_SHA256  $RUNNER_TEMP/bepinex.zip" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/bepinex"
+          unzip -q "$RUNNER_TEMP/bepinex.zip" -d "$RUNNER_TEMP/bepinex"
+
+      - name: Build plugin
+        shell: bash
+        run: |
+          dotnet build "${{ matrix.project }}" \
+            --configuration Release \
+            --property:ContinuousIntegrationBuild=true \
+            --property:BepInExPath="$RUNNER_TEMP/bepinex/BepInEx"
+
+      - name: Stage plugin
+        shell: bash
+        run: |
+          mkdir -p artifact/BepInEx/plugins/VSEvolutionHelper
+          cp "VSEvolutionHelper.BepInEx/bin/Release/${{ matrix.output }}/VSEvolutionHelper.dll" \
+            artifact/BepInEx/plugins/VSEvolutionHelper/VSEvolutionHelper.dll
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-${{ github.sha }}
+          path: artifact
+          if-no-files-found: error
+          retention-days: 14

@@ -1,17 +1,8 @@
-# Paths excluded from cloc (use: cloc . --exclude-list-file=.clocignore)
-# One path/name per line; comments start with #
-
 .git
 .tools
-.vs
 .idea
+.vs
 bin
+dist
+lib
 obj
-
-# Reference / decompiled only (not authored mod code)
-game-api
-decompiled
-
-# Build outputs under the plugin project
-VSEvolutionHelper.BepInEx/bin
-VSEvolutionHelper.BepInEx/obj
